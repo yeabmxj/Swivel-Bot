@@ -36,10 +36,10 @@ else if (SensorValue(leftTapeFinder) >= minTapeValue && SensorValue(rightTapeFin
 }
 
 task main() {
-writeDebugStream("Int i is : %d", SensorValue[leftTapeFinder]);
-writeDebugStream("Int i is : %d",
-SensorValue[rightTapeFinder]);
-/*
+
+//writeDebugStream("Int i is : %d", SensorValue[leftTapeFinder]);
+//writeDebugStream("Int i is : %d", SensorValue[rightTapeFinder]);
+
 int circleCount = 0;
 
 motor[swivelWheel] = 0;
@@ -59,6 +59,6 @@ if (circleCount == 3) {
 	motor[leftWheel] = 0;
 	motor[rightWheel] = 0;
 }
-*/
+
 
 }
