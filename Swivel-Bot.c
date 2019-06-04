@@ -1,7 +1,9 @@
 #pragma config(Sensor, in1,    leftTapeFinder, sensorLineFollower)
 #pragma config(Sensor, in2,    rightTapeFinder, sensorLineFollower)
 #pragma config(Sensor, in3,    distanceFinder, sensorPotentiometer)
-#pragma config(Sensor, dgtl1,  proximitySensor, sensorSONAR_cm)
+#pragma config(Sensor, dgtl1,  frontProximitySensor, sensorSONAR_cm)
+#pragma config(Sensor, dgtl3,  rightProximitySensor, sensorSONAR_cm)
+#pragma config(Sensor, dgtl5,  bottomRightProximitySensor, sensorSONAR_cm)
 #pragma config(Motor,  port2,           swivelWheel,   tmotorVex269_MC29, openLoop)
 #pragma config(Motor,  port3,           leftWheel,     tmotorVex393_MC29, openLoop)
 #pragma config(Motor,  port4,           rightWheel,    tmotorVex393_MC29, openLoop)
@@ -9,6 +11,8 @@
 
 //RobotAttribs.
 int StartUpTimeMsec = 2000;
+int run = 0;
+bool completed = false;
 
 //PinMovement
 int minTapeValue = 1000;
@@ -19,6 +23,9 @@ int turnTimeMsec = 1500;
 //Speeds
 int steadySpeed = 30;
 int fasterSpeed = 60;
+
+//SONAR
+int minDistanceToObstacle = 10;		//cm
 
 void pinManuver(int speed) {
 	if (SensorValue(leftTapeFinder) < minTapeValue && SensorValue(rightTapeFinder) < minTapeValue) {
@@ -44,44 +51,125 @@ void pinManuver(int speed) {
 	}
 }
 
-void pinTurn(int timeInMsec) {
+void pinTurnRight(int timeInMsec) {
 	motor[swivelWheel] = 90;
-	motor[leftWheel] = 30;
-	motor[rightWheel] = 0;
+	motor[leftWheel] = 0;
+	motor[rightWheel] = steadySpeed;
 	wait1Msec(timeInMsec);
+	motor[swivelWheel] = 0;
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
 }
 
 void task_1() {
-	if (circleCount != totalNumberOfCircles) {
+	switch (run) {
+	case 0:
 		pinManuver(steadySpeed);
-	}
-	else if (circleCount == totalNumberOfCircles) {
+		if (circleCount == totalNumberOfCircles) {
+			run += 1;
+		}
+		break;
+	case 1:
 		motor[swivelWheel] = 0;
 		motor[leftWheel] = 0;
 		motor[rightWheel] = 0;
+		run = 0;
+		completed = true;
+		break;
 	}
 }
 void task_2() {
-	for(int i = 0; i = 2; i++) {
-		if (circleCount == 0) {
-			motor[leftWheel] = steadySpeed;
-			motor[rightWheel] = steadySpeed;
+	switch (run) {
+	case 0:
+		motor[leftWheel] = steadySpeed;
+		motor[rightWheel] = steadySpeed;
+		if (circleCount != 0 && circleCount != totalNumberOfCircles) {
+			run += 1;
 		}
-		else if (circleCount != totalNumberOfCircles) {
-			pinManuver(steadySpeed);
+		break;
+	case 1:
+		pinManuver(steadySpeed);
+		if (circleCount == totalNumberOfCircles) {
+			run += 1;
 		}
-		else if (circleCount == totalNumberOfCircles) {
-			motor[swivelWheel] = 0;
-			motor[leftWheel] = 0;
-			motor[rightWheel] = 0;
-			wait1Msec(5000);
-			pinTurn(turnTimeMsec);
-			circleCount = 0;
+		break;
+	case 2:
+		motor[swivelWheel] = 0;
+		motor[leftWheel] = 0;
+		motor[rightWheel] = 0;
+		wait1Msec(5000);
+		run += 1;
+		break;
+	case 3:
+		pinTurnRight(turnTimeMsec);
+		circleCount = 0;
+		run += 1;
+		break;
+	case 4:
+		motor[leftWheel] = steadySpeed;
+		motor[rightWheel] = steadySpeed;
+		wait1Msec(3000);
+		run += 1;
+		break;
+	case 5:
+		pinManuver(steadySpeed);
+		if (circleCount == totalNumberOfCircles) {
+			run += 1;
 		}
+		break;
+	case 6:
+		motor[swivelWheel] = 0;
+		motor[leftWheel] = 0;
+		motor[rightWheel] = 0;
+		run = 0;
+		completed = true;
+		break;
 	}
 }
 void task_3() {
-	//TBC
+	switch(run) {
+	case 0:
+		motor[swivelWheel] = 0;
+		motor[leftWheel] = steadySpeed;
+		motor[rightWheel] = steadySpeed;
+		if (SensorValue[frontProximitySensor] < minDistanceToObstacle) {
+			motor[swivelWheel] = 0;
+			motor[leftWheel] = 0;
+			motor[rightWheel] = 0;
+			run += 1;
+		}
+		break;
+	case 1:
+		pinTurnRight(turnTimeMsec);
+		run += 1;
+		break;
+	case 2:
+		motor[swivelWheel] = 0;
+		motor[leftWheel] = steadySpeed;
+		motor[rightWheel] = steadySpeed;
+		if (SensorValue[rightProximitySensor] > minDistanceToObstacle) {
+			motor[swivelWheel] = 0;
+			motor[leftWheel] = 0;
+			motor[rightWheel] = 0;
+			run += 1;
+		}
+		break;
+	case 3:
+		motor[swivelWheel] = 0;
+		motor[leftWheel] = steadySpeed;
+		motor[rightWheel] = steadySpeed;
+		if (SensorValue[bottomRightProximitySensor] > minDistanceToObstacle) {
+			motor[swivelWheel] = 0;
+			motor[leftWheel] = 0;
+			motor[rightWheel] = 0;
+			run += 1;
+		}
+		break;
+	case 4:
+		pinTurnRight(turnTimeMsec);
+		run += 1;
+		break;
+	}
 }
 
 task main() {
@@ -90,7 +178,14 @@ task main() {
 	//writeDebugStream("Int i is : %d", SensorValue[rightTapeFinder]);
 
 	wait1Msec(StartUpTimeMsec);
-	task_1();
-	task_2();
-	task_3();
+
+	do {task_1();}
+	while (!completed);
+
+	do {task_2();}
+	while (!completed);
+
+	do {task_3();}
+	while (!completed);
+
 }
