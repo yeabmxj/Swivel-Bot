@@ -1,6 +1,6 @@
 #pragma config(Sensor, in1,    leftTapeFinder, sensorLineFollower)
 #pragma config(Sensor, in2,    rightTapeFinder, sensorLineFollower)
-#pragma config(Sensor, in3,    distanceFinder, sensorPotentiometer)
+#pragma config(Sensor, in3,    distanceFinder, sensorAnalog)
 #pragma config(Sensor, dgtl1,  frontProximitySensor, sensorSONAR_cm)
 #pragma config(Sensor, dgtl3,  rightProximitySensor, sensorSONAR_cm)
 #pragma config(Sensor, dgtl5,  bottomRightProximitySensor, sensorSONAR_cm)
@@ -13,6 +13,8 @@
 int StartUpTimeMsec = 2000;
 int run = 0;
 bool completed = false;
+int wheelRadius = 1;
+bool simpleRun = true;
 
 //PinMovement
 int minTapeValue = 1000;
@@ -27,6 +29,12 @@ int fasterSpeed = 60;
 //SONAR
 int minDistanceToObstacle = 10;		//cm
 
+//Tasks
+int task_1_Duration = 5000;
+int task_2_Duration = 5000;
+int task_3_Duration = 5000;
+
+
 void pinManuver(int speed) {
 	if (SensorValue(leftTapeFinder) < minTapeValue && SensorValue(rightTapeFinder) < minTapeValue) {
 		motor[swivelWheel] = 0;
@@ -34,27 +42,27 @@ void pinManuver(int speed) {
 		motor[rightWheel] = speed;
 	}
 	else if (SensorValue(leftTapeFinder) >= minTapeValue && SensorValue(rightTapeFinder) < minTapeValue) {
-		motor[swivelWheel] = 90;
+		motor[swivelWheel] = 180;
 		motor[leftWheel] = 0;
 		motor[rightWheel] = speed;
 	}
 	else if (SensorValue(leftTapeFinder) < minTapeValue && SensorValue(rightTapeFinder) >= minTapeValue) {
-		motor[swivelWheel] = 90;
+		motor[swivelWheel] = 180;
 		motor[leftWheel] = speed;
 		motor[rightWheel] = 0;
 	}
 	else if (SensorValue(leftTapeFinder) >= minTapeValue && SensorValue(rightTapeFinder) >= minTapeValue) {
-		motor[swivelWheel] = 90;
+		motor[swivelWheel] = 180;
 		motor[leftWheel] = speed;
 		motor[rightWheel] = speed;
 		circleCount += 1;
 	}
 }
 
-void pinTurnRight(int timeInMsec) {
+void pinTurn(int timeInMsec, int direction) {
 	motor[swivelWheel] = 90;
 	motor[leftWheel] = 0;
-	motor[rightWheel] = steadySpeed;
+	motor[rightWheel] = direction * steadySpeed;
 	wait1Msec(timeInMsec);
 	motor[swivelWheel] = 0;
 	motor[leftWheel] = 0;
@@ -101,7 +109,7 @@ void task_2() {
 		run += 1;
 		break;
 	case 3:
-		pinTurnRight(turnTimeMsec);
+		pinTurn(turnTimeMsec, 1);
 		circleCount = 0;
 		run += 1;
 		break;
@@ -127,6 +135,10 @@ void task_2() {
 	}
 }
 void task_3() {
+
+	int startValue = 0;
+	int endValue = 0;
+
 	switch(run) {
 	case 0:
 		motor[swivelWheel] = 0;
@@ -140,21 +152,27 @@ void task_3() {
 		}
 		break;
 	case 1:
-		pinTurnRight(turnTimeMsec);
+		pinTurn(turnTimeMsec, 1);
+		startValue = SensorValue[distanceFinder];
 		run += 1;
 		break;
 	case 2:
 		motor[swivelWheel] = 0;
 		motor[leftWheel] = steadySpeed;
 		motor[rightWheel] = steadySpeed;
-		if (SensorValue[rightProximitySensor] > minDistanceToObstacle) {
+		if (SensorValue[bottomRightProximitySensor] > minDistanceToObstacle) {
 			motor[swivelWheel] = 0;
 			motor[leftWheel] = 0;
 			motor[rightWheel] = 0;
+			endValue = SensorValue[distanceFinder];
 			run += 1;
 		}
 		break;
 	case 3:
+		pinTurn(turnTimeMsec, -1);
+		run += 1;
+		break;
+	case 4:
 		motor[swivelWheel] = 0;
 		motor[leftWheel] = steadySpeed;
 		motor[rightWheel] = steadySpeed;
@@ -165,27 +183,136 @@ void task_3() {
 			run += 1;
 		}
 		break;
-	case 4:
-		pinTurnRight(turnTimeMsec);
+	case 5:
+		pinTurn(turnTimeMsec, -1);
 		run += 1;
 		break;
 	}
 }
 
+void simple_task_1() {
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_1_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+}
+
+void simple_task_2() {
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_2_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_2_Duration);
+
+	pinTurn(1, turnTimeMsec);
+
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_2_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+}
+
+void simple_task_3() {
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	pinTurn(1, turnTimeMsec);
+
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	pinTurn(-1, turnTimeMsec);
+
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	pinTurn(-1, turnTimeMsec);
+
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	pinTurn(1, turnTimeMsec);
+
+	motor[leftWheel] = fasterSpeed;
+	motor[rightWheel] = fasterSpeed;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+
+	motor[leftWheel] = 0;
+	motor[rightWheel] = 0;
+	motor[swivelWheel] = 0;
+	wait1Msec(task_3_Duration);
+}
+
+int distanceTraveled() {
+	return (distanceFinder / 360) * (2 * 3.14 * wheelRadius);
+}
+
 task main() {
 
-	//writeDebugStream("Int i is : %d", SensorValue[leftTapeFinder]);
-	//writeDebugStream("Int i is : %d", SensorValue[rightTapeFinder]);
 
 	wait1Msec(StartUpTimeMsec);
 
-	do {task_1();}
-	while (!completed);
+	while(simpleRun) {
+		writeDebugStream("Int i is : %d", SensorValue[leftTapeFinder]);
+		writeDebugStream("Int i is : %d", SensorValue[rightTapeFinder]);
 
-	do {task_2();}
-	while (!completed);
+		simple_task_1();
+		simple_task_2();
+		simple_task_3();
+	}
+	while (!simpleRun) {
+		do {task_1();}
+		while (!completed);
 
-	do {task_3();}
-	while (!completed);
+		completed = false;
 
+		do {task_2();}
+		while (!completed);
+
+		completed = false;
+
+		do {task_3();}
+		while (!completed);
+	}
 }
